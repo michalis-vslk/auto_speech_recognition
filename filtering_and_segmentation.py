@@ -4,7 +4,7 @@ import librosa
 import librosa.display
 from scipy.signal import find_peaks
 
-import ploting
+import plotting
 
 
 # The function used in order to filter the original audio file
@@ -17,39 +17,39 @@ def filtering(signal, sr):
 
     # Emphasizing the signal through pre-emphasis, in order to recover the foreground audio more accurately later on
     signal_emphasized = librosa.effects.preemphasis(signal)
-    S_full, phase = librosa.magphase(librosa.stft(signal_emphasized))
+    spectrogram_full, phase = librosa.magphase(librosa.stft(signal_emphasized))
     idx = slice(*librosa.time_to_frames([0, 18], sr=sr))
 
-    # ploting.plot_original_spectrogram(S_full, idx)
+    # plotting.plot_spectrogram(spectrogram_full, idx)
 
-    S_filter = librosa.decompose.nn_filter(S_full,
-                                           aggregate=np.median,
-                                           metric='cosine',
-                                           width=int(librosa.time_to_frames(2, sr=sr)))
+    spectrogram_filter = librosa.decompose.nn_filter(spectrogram_full,
+                                                     aggregate=np.median,
+                                                     metric='cosine',
+                                                     width=int(librosa.time_to_frames(2, sr=sr)))
 
     # The output of the filter shouldn't be greater than the input
-    # if we assume signals are additive.  Taking the pointwise minimium
+    # if we assume signals are additive.  Taking the pointwise minimum
     # with the input spectrum forces this.
-    S_filter = np.minimum(S_full, S_filter)
+    spectrogram_filter = np.minimum(spectrogram_full, spectrogram_filter)
 
     margin_i, margin_v = 2, 10
     power = 2
 
-    mask_i = librosa.util.softmask(S_filter,
-                                   margin_i * (S_full - S_filter),
+    mask_i = librosa.util.softmask(spectrogram_filter,
+                                   margin_i * (spectrogram_full - spectrogram_filter),
                                    power=power)
 
-    mask_v = librosa.util.softmask(S_full - S_filter,
-                                   margin_v * S_filter,
+    mask_v = librosa.util.softmask(spectrogram_full - spectrogram_filter,
+                                   margin_v * spectrogram_filter,
                                    power=power)
 
     # Once we have the masks, we simply multiply them with the input spectrum
     # to separate the components
 
-    s_foreground = mask_v * S_full
-    s_background = mask_i * S_full
+    s_foreground = mask_v * spectrogram_full
+    s_background = mask_i * spectrogram_full
 
-    # ploting.plot_foreground_background_comparison(S_full, s_background, s_foreground, idx, sr)
+    # plotting.plot_foreground_background_comparison(spectrogram_full, s_background, s_foreground, idx, sr)
 
     foreground_audio = librosa.istft(s_foreground * phase)
 

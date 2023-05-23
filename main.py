@@ -24,5 +24,3 @@ print("The fundamental frequency of the speaker is calculated at: " + str(averag
 for i in range(len(word_matrix)):
     sd.play(word_matrix[i], sr)
     sd.wait()'''
-
-
