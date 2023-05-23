@@ -2,12 +2,14 @@ from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 import librosa
-import sounddevice as sd
-import noisereduce as nr
+#import sounddevice as sd
+#import noisereduce as nr
 import librosa.display
+from scipy.signal import find_peaks
 
-
+#Loading the audio file
 signal, sr = librosa.load("sample-1.wav")  # we change sr
+
 signal_emphasized = librosa.effects.preemphasis(signal)
 S_full, phase = librosa.magphase(librosa.stft(signal_emphasized))
 idx = slice(*librosa.time_to_frames([0, 18], sr=sr))
@@ -88,7 +90,31 @@ for word in words:
 # Access individual words in the matrix
 for word in word_matrix:
     # Process each word as needed
+
     pass
+
+avg_fundamental_freq = 0
+for i in range(len(word_matrix)):
+    word_array = word_matrix[i]
+    # Calculate autocorrelation of the word segment
+    autocorr = librosa.autocorrelate(word_array)
+
+    peaks, _ = find_peaks(autocorr)
+    # Find the second-highest peak (excluding the trivial lag 0 peak)
+    if len(peaks) > 1:
+        period = peaks[np.argmax(autocorr[peaks[1:]])]
+        fundamental_freq = sr / period
+
+        # If it's above average speech frequency, we use a cap of 500 Hz
+        if fundamental_freq > 500:
+            fundamental_freq=500
+        print("Word {}: Fundamental Frequency = {} Hz".format(i+1, fundamental_freq))
+        avg_fundamental_freq += fundamental_freq
+    else:
+        print("Word {}: Fundamental Frequency not found.".format(i+1))
+
+avg_fundamental_freq = avg_fundamental_freq / len(word_matrix)
+print(str(avg_fundamental_freq) + " Hz")
 '''
 words = []
 current_part = []
@@ -121,8 +147,8 @@ ax[1].legend()
 # Show plot
 plt.show()
 '''
-for word in word_matrix:
-    print(len(word))
+'''for word in word_matrix:
+    print(len(word))'''
 '''
 for i in range(len(word_matrix)):
     sd.play(word_matrix[i], sr)
