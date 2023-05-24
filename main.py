@@ -3,6 +3,7 @@ import numpy as np
 import librosa
 # import sounddevice as sd
 # import noisereduce as nr
+import matplotlib.pyplot as plt
 import librosa.display
 import filtering_and_segmentation
 

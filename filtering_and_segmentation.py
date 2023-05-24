@@ -18,10 +18,10 @@ def filtering(signal, sr):
     # Emphasizing the signal through pre-emphasis, in order to recover the foreground audio more accurately later on
     signal_emphasized = librosa.effects.preemphasis(signal)
     spectrogram_full, phase = librosa.magphase(librosa.stft(signal_emphasized))
-    idx = slice(*librosa.time_to_frames([0, 18], sr=sr))
+    duration = librosa.get_duration(y=signal,sr=sr)
+    idx = slice(*librosa.time_to_frames([0, duration], sr=sr))
 
-    # plotting.plot_spectrogram(spectrogram_full, idx)
-
+    plotting.plot_spectrogram(spectrogram_full, idx, phase)
     spectrogram_filter = librosa.decompose.nn_filter(spectrogram_full,
                                                      aggregate=np.median,
                                                      metric='cosine',
@@ -49,7 +49,7 @@ def filtering(signal, sr):
     s_foreground = mask_v * spectrogram_full
     s_background = mask_i * spectrogram_full
 
-    # plotting.plot_foreground_background_comparison(spectrogram_full, s_background, s_foreground, idx, sr)
+    plotting.plot_foreground_background_comparison(spectrogram_full, s_background, s_foreground, idx, sr,phase)
 
     foreground_audio = librosa.istft(s_foreground * phase)
 
