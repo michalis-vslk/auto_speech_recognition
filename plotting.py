@@ -18,7 +18,7 @@ def plot_spectrogram(spectrogram_full, idx, phase):
 
 
 def plot_foreground_background_comparison(spectrogram_full, spectrogram_background, spectrogram_foreground, idx, sr,phase):
-    phase=phase
+    phase = phase
     plt.figure(figsize=(12, 8))
     plt.subplot(3, 1, 1)
     librosa.display.specshow(librosa.amplitude_to_db(spectrogram_full[:, idx], ref=np.max),

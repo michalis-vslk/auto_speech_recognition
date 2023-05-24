@@ -21,11 +21,12 @@ def filtering(signal, sr):
     duration = librosa.get_duration(y=signal,sr=sr)
     idx = slice(*librosa.time_to_frames([0, duration], sr=sr))
 
-    plotting.plot_spectrogram(spectrogram_full, idx, phase)
+    #plotting.plot_spectrogram(spectrogram_full, idx, phase)
     spectrogram_filter = librosa.decompose.nn_filter(spectrogram_full,
                                                      aggregate=np.median,
                                                      metric='cosine',
-                                                     width=int(librosa.time_to_frames(2, sr=sr)))
+                                                     width=10)
+                                                     #width=int(librosa.time_to_frames(2, sr=sr)))
 
     # The output of the filter shouldn't be greater than the input
     # if we assume signals are additive.  Taking the pointwise minimum
@@ -49,17 +50,16 @@ def filtering(signal, sr):
     s_foreground = mask_v * spectrogram_full
     s_background = mask_i * spectrogram_full
 
-    plotting.plot_foreground_background_comparison(spectrogram_full, s_background, s_foreground, idx, sr,phase)
+    #plotting.plot_foreground_background_comparison(spectrogram_full, s_background, s_foreground, idx, sr,phase)
 
-    foreground_audio = librosa.istft(s_foreground * phase)
-
+    temp = librosa.istft(s_foreground * phase)
+    foreground_audio = librosa.effects.deemphasis(temp)
     return foreground_audio
 
 
 # Segmenting the audio signal into words
-def segmentation(signal, foreground_audio):
+def segmentation(foreground_audio):
     # ---Input--- #
-    # signal: The original audio signal
     # foreground_audio: The filtered audio signal
     # ---Output--- #
     # word_matrix: The matrix containing each word's signal
@@ -68,7 +68,7 @@ def segmentation(signal, foreground_audio):
 
     words = []
     for start, end in endpoints:
-        word = signal[start:end]
+        word = foreground_audio[start:end]
         words.append(word)
 
     # Saving the words in a matrix
