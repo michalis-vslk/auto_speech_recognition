@@ -74,7 +74,7 @@ def segmentation(foreground_audio):
     # Saving the words in a matrix
     word_matrix = []
     for word in words:
-        if len(word) > 5000:
+        if len(word) > 5500:
             word_matrix.append(word)
 
     return word_matrix
