@@ -21,8 +21,9 @@ average_fundamental_frequency = filtering_and_segmentation.fundamental_frequency
 print("The fundamental frequency of the speaker is calculated at: " + str(average_fundamental_frequency) + " Hz")
 # 3
 t_dataset_matrix = training_datasets.training()
-y = training_datasets.cost_calculator(word_matrix,t_dataset_matrix)
-
+spec1,spec2 = training_datasets.cost_calculator(word_matrix,t_dataset_matrix)
+predicted_classes = training_datasets.classify_with_mlp(word_matrix, t_dataset_matrix,spec1,spec2)
+print(predicted_classes)
 '''
 #this is our way,sort of. because we changed to check the dp amplitude
 

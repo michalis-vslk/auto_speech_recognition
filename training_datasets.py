@@ -2,7 +2,7 @@ import numpy as np
 import librosa.display
 import filtering_and_segmentation
 import os
-
+import tensorflow as tf
 
 def training():
     t_datasets = []
@@ -27,26 +27,66 @@ def training():
 
 def cost_calculator(word_matrix, t_dataset_matrix):
     cost_matrix_new = np.empty((len(word_matrix), len(t_dataset_matrix)))
-    ct = np.empty((len(word_matrix), 10))
+    ct = np.empty((len(word_matrix), int(len(t_dataset_matrix) / 7)))
+    ct2 = np.empty((len(word_matrix), int(len(t_dataset_matrix) / 7)))
     # cost_matrix_new = [None] * len(word_matrix) * len(t_dataset_matrix)
     min_cost_indexes = []
     max_cos_indexes = []
+    normal_distance = np.empty((len(word_matrix), len(t_dataset_matrix)))
+    median_value_train = np.empty(len(t_dataset_matrix))
+    std_deviation_train = np.empty(len(t_dataset_matrix))
+    median_per_training_word = np.empty(int(len(t_dataset_matrix) / 7))
+    std_deviation_per_training_word = np.empty(int(len(t_dataset_matrix) / 7))
+
     average_cos_similarity = np.empty((len(word_matrix), len(t_dataset_matrix)))
     # training_digits_coefficients = []
-
+    max_len = max([len(i) for i in word_matrix])
+    max_len2 = max([len(i) for i in t_dataset_matrix])
+    total_max_length = max(max_len, max_len2)
+    spec1_mags = []
+    spec2_mags = []
+    spec1_mag_max_shape_list = []
+    spec2_mag_max_shape_list = []
     for i in range(len(word_matrix)):
-        spectrogram_1 = np.abs(librosa.stft(word_matrix[i], win_length=128, hop_length=64))  #128 64
+        spectrogram_1 = np.abs(librosa.stft(word_matrix[i], win_length=128, hop_length=64))  # 128 64
         spec1_mag = librosa.amplitude_to_db(spectrogram_1)
+        spec1_mag_max_shape_list.append(spec1_mag.shape[1])
+    for j in range(len(t_dataset_matrix)):
+        spectrogram_2 = np.abs(librosa.stft(t_dataset_matrix[j], win_length=128, hop_length=64))  # 128 64
+        # spec2_mag = librosa.amplitude_to_db(spectrogram_2)
+        spec2_mag = librosa.amplitude_to_db(spectrogram_2)
+        spec2_mag_max_shape_list.append(spec2_mag.shape[1])
+    temp1 = max(spec1_mag_max_shape_list)
+    temp2 = max(spec2_mag_max_shape_list)
+    total_max_shape = max(temp1,temp2)
+    for i in range(len(word_matrix)):
+        #size_diff1 = total_max_length - word_matrix[i].size
+        #word_matrix[i] = np.concatenate((word_matrix[i], np.zeros(size_diff1)))
+        spectrogram_1 = np.abs(librosa.stft(word_matrix[i], win_length=128, hop_length=64))  # 128 64
+        spec1_mag = librosa.amplitude_to_db(spectrogram_1)
+        if spec1_mag.shape[1] < total_max_shape:
+            size_diff = total_max_shape - spec1_mag.shape[1]
+            spec1_mag = np.concatenate((spec1_mag, np.zeros((spec1_mag.shape[0], size_diff))), axis=1)
+        spec1_mags.append(spec1_mag[i])
+        #median_value_1 = np.median(spec1_mag)
+        #std_deviation_1 = np.std(spec1_mag)
         for j in range(len(t_dataset_matrix)):
             # we increased the window length of the sort fourier transform because it works better
             # we check the amplitude in dB of the spectrogram/coefficients
             # we save the magnitudes of each spectrogram's coefficients, without the phase(hence the abs)
-            spectrogram_2 = np.abs(librosa.stft(t_dataset_matrix[j], win_length=128, hop_length=64)) #128 64
+            #size_diff2 = total_max_length - t_dataset_matrix[i].size
+            #t_dataset_matrix[i] = np.concatenate((t_dataset_matrix[i], np.zeros(size_diff2)))
+            spectrogram_2 = np.abs(librosa.stft(t_dataset_matrix[j], win_length=128, hop_length=64))  # 128 64
+            # spec2_mag = librosa.amplitude_to_db(spectrogram_2)
             spec2_mag = librosa.amplitude_to_db(spectrogram_2)
+            if spec2_mag.shape[1] < total_max_shape:
+                size_diff2 = total_max_shape - spec2_mag.shape[1]
+                spec2_mag = np.concatenate((spec2_mag, np.zeros((spec2_mag.shape[0], size_diff2))), axis=1)
+            spec2_mags.append(spec2_mag[i])
             # the best match for the word has the least cost (which is in the bottom right corner), we checked for the other wav files
-            cost_matrix, wp = librosa.sequence.dtw(X=spec1_mag, Y=spec2_mag)
+            '''cost_matrix, wp = librosa.sequence.dtw(X=spec1_mag, Y=spec2_mag)
             # make a list with minimum cost of each digit
-            cost_matrix_new[i][j] = cost_matrix[-1, -1]
+            cost_matrix_new[i][j] = cost_matrix[-1, -1]'''
 
             window_size = 128  # Adjust the window size as needed #128 64
             hop_length = 64
@@ -57,25 +97,37 @@ def cost_calculator(word_matrix, t_dataset_matrix):
                 vector_1 = spectrogram_1_windows[:, k].flatten()
                 vector_2 = spectrogram_2_windows[:, k].flatten()
                 if len(vector_2) > len(vector_1):
+                    print("here1")
                     size_diff = vector_2.size - vector_1.size
                     vector_1 = np.concatenate((vector_1, np.zeros(size_diff)))
-                else:
+                elif len(vector_2) < len(vector_1):
+                    print("here2")
                     size_diff = vector_1.size - vector_2.size
                     vector_2 = np.concatenate((vector_2, np.zeros(size_diff)))
                 cos_similarity = np.dot(vector_1, vector_2) / (np.linalg.norm(vector_1) * np.linalg.norm(vector_2))
                 cosine_similarities.append(cos_similarity)
 
-            # Aggregate the cosine similarities
+                # Aggregate the cosine similarities
             average_cos_similarity[i][j] = np.nanmean(cosine_similarities)
-            #print("Average Cosine Similarity:", average_cos_similarity[i])
+            # print("Average Cosine Similarity:", average_cos_similarity[i])
+            #median_value_train[i][j] = np.median(spec2_mag)
+            #std_deviation_train[i][j] = np.std(spec2_mag)
+        '''
+        for j in range(len(t_dataset_matrix)):
+            normal_distance[i][j] = np.abs(
+                (median_value_1 - median_value_train[i][j]) / (std_deviation_1 - std_deviation_train[i][j]))
 
-
-
+        for k in range(int(len(t_dataset_matrix) / 7)):
+            start_idx = k * 7
+            end_idx = (k + 1) * 7
+            ct2[i][k] = min(normal_distance[i][start_idx:end_idx])
+        index_min_cost = np.argmin(ct2[i])
+        min_cost_indexes.append(index_min_cost)'''
         # index of MINIMUM COST
-        #1st way
+        # 1st way
         # index_min_cost = np.argmin(cost_matrix_new[i])
         # min_cost_indexes.append(index_min_cost)
-        #2nd way
+        # 2nd way
         '''
         for k in range(10):
             start_idx = k * 7
@@ -84,29 +136,55 @@ def cost_calculator(word_matrix, t_dataset_matrix):
 
         index_min_cost = np.argmin(ct[i])
         min_cost_indexes.append(index_min_cost)'''
-
+        '''
         #3rd way
-        for k in range(10):
+        for k in range(int(len(t_dataset_matrix) / 7)):
             start_idx = k * 7
             end_idx = (k + 1) * 7
             ct[i][k] = min(cost_matrix_new[i][start_idx:end_idx])
         index_min_cost = np.argmin(ct[i])
-        min_cost_indexes.append(index_min_cost)
-        #4th way cosine cost
-        for k in range(10):
+        min_cost_indexes.append(index_min_cost)'''
+        # 4th way cosine cost
+        for k in range(int(len(t_dataset_matrix) / 7)):
             start_idx = k * 7
             end_idx = (k + 1) * 7
             ct[i][k] = max(average_cos_similarity[i][start_idx:end_idx])
         index_max_cost = np.argmax(ct[i])
         max_cos_indexes.append(index_max_cost)
-        #index_min_cost = np.argmax(average_cos_similarity[i])
-        #min_cost_indexes.append(index_min_cost)
+        # index_min_cost = np.argmax(average_cos_similarity[i])
+        # min_cost_indexes.append(index_min_cost)
 
-    #print("digits recognised: ")
-    print(min_cost_indexes)
+    # 5th way
+
+    '''for k in range(int(len(t_dataset_matrix) / 7)):
+        start_idx = k * 7
+        end_idx = (k + 1) * 7
+        median_per_training_word[k] = np.mean(median_value_train[start_idx:end_idx])
+        std_deviation_per_training_word[k] = np.std(std_deviation_train[start_idx:end_idx])'''
+
+
+    # print("digits recognised: ")
+    #print(min_cost_indexes)
     print(max_cos_indexes)
-    return cost_matrix_new
+    return spec1_mags, spec2_mags
 
+
+def classify_with_mlp(word_matrix, t_dataset_matrix, spec1_mag, spec2_mag):
+    # Create a multi-layer perceptron (MLP) model
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(64, activation='relu', input_shape=(spec1_mag[0].shape[1],)),
+        tf.keras.layers.Dense(32, activation='relu'),
+        tf.keras.layers.Dense(10, activation='softmax')
+    ])
+
+    # Compile the model
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    # Classify the word_matrix using the MLP model
+    predictions = model.predict(spec1_mag)
+    predicted_classes = np.argmax(predictions, axis=1)
+
+    return predicted_classes
 #gamv thn aek
 '''spectrogram_2 = np.abs(librosa.stft(word_matrix2[0], win_length=512, hop_length=256))  
 # we increaced the window length of the sort fourier transform because it works better?!
