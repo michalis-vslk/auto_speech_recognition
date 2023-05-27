@@ -107,7 +107,7 @@ def cost_calculator(word_matrix, t_dataset_matrix):
     print(max_cos_indexes)
     return cost_matrix_new
 
-
+#gamv thn aek
 '''spectrogram_2 = np.abs(librosa.stft(word_matrix2[0], win_length=512, hop_length=256))  
 # we increaced the window length of the sort fourier transform because it works better?!
 
