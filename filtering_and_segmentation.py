@@ -23,7 +23,7 @@ def filtering(signal, sr):
 
     #plotting.plot_spectrogram(spectrogram_full, idx, phase)
     spectrogram_filter = librosa.decompose.nn_filter(spectrogram_full,
-                                                     aggregate=np.median,
+                                                     aggregate=np.nanmedian,
                                                      metric='cosine',
                                                      width=10)
                                                      #width=int(librosa.time_to_frames(2, sr=sr)))
@@ -34,7 +34,7 @@ def filtering(signal, sr):
     spectrogram_filter = np.minimum(spectrogram_full, spectrogram_filter)
 
     margin_i, margin_v = 2, 10
-    power = 2
+    power = 2.1
 
     mask_i = librosa.util.softmask(spectrogram_filter,
                                    margin_i * (spectrogram_full - spectrogram_filter),
@@ -74,7 +74,7 @@ def segmentation(foreground_audio):
     # Saving the words in a matrix
     word_matrix = []
     for word in words:
-        if 6000 < len(word) < 50000:
+        if 6500 < len(word) < 80000:
             word_matrix.append(word)
 
     return word_matrix

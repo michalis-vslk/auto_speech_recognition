@@ -20,6 +20,7 @@ word_matrix = filtering_and_segmentation.segmentation(foreground_audio)
 average_fundamental_frequency = filtering_and_segmentation.fundamental_frequency_calculator(word_matrix, sr)
 print("The fundamental frequency of the speaker is calculated at: " + str(average_fundamental_frequency) + " Hz")
 # 3
+
 t_dataset_matrix = training_datasets.training()
 spec1,spec2 = training_datasets.cost_calculator(word_matrix,t_dataset_matrix)
 predicted_classes = training_datasets.classify_with_mlp(word_matrix, t_dataset_matrix,spec1,spec2)

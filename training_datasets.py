@@ -4,6 +4,7 @@ import filtering_and_segmentation
 import os
 import tensorflow as tf
 
+
 def training():
     t_datasets = []
     # assigning the proper directory
@@ -58,24 +59,24 @@ def cost_calculator(word_matrix, t_dataset_matrix):
         spec2_mag_max_shape_list.append(spec2_mag.shape[1])
     temp1 = max(spec1_mag_max_shape_list)
     temp2 = max(spec2_mag_max_shape_list)
-    total_max_shape = max(temp1,temp2)
+    total_max_shape = max(temp1, temp2)
     for i in range(len(word_matrix)):
-        #size_diff1 = total_max_length - word_matrix[i].size
-        #word_matrix[i] = np.concatenate((word_matrix[i], np.zeros(size_diff1)))
+        # size_diff1 = total_max_length - word_matrix[i].size
+        # word_matrix[i] = np.concatenate((word_matrix[i], np.zeros(size_diff1)))
         spectrogram_1 = np.abs(librosa.stft(word_matrix[i], win_length=128, hop_length=64))  # 128 64
         spec1_mag = librosa.amplitude_to_db(spectrogram_1)
         if spec1_mag.shape[1] < total_max_shape:
             size_diff = total_max_shape - spec1_mag.shape[1]
             spec1_mag = np.concatenate((spec1_mag, np.zeros((spec1_mag.shape[0], size_diff))), axis=1)
         spec1_mags.append(spec1_mag[i])
-        #median_value_1 = np.median(spec1_mag)
-        #std_deviation_1 = np.std(spec1_mag)
+        # median_value_1 = np.median(spec1_mag)
+        # std_deviation_1 = np.std(spec1_mag)
         for j in range(len(t_dataset_matrix)):
             # we increased the window length of the sort fourier transform because it works better
             # we check the amplitude in dB of the spectrogram/coefficients
             # we save the magnitudes of each spectrogram's coefficients, without the phase(hence the abs)
-            #size_diff2 = total_max_length - t_dataset_matrix[i].size
-            #t_dataset_matrix[i] = np.concatenate((t_dataset_matrix[i], np.zeros(size_diff2)))
+            # size_diff2 = total_max_length - t_dataset_matrix[i].size
+            # t_dataset_matrix[i] = np.concatenate((t_dataset_matrix[i], np.zeros(size_diff2)))
             spectrogram_2 = np.abs(librosa.stft(t_dataset_matrix[j], win_length=128, hop_length=64))  # 128 64
             # spec2_mag = librosa.amplitude_to_db(spectrogram_2)
             spec2_mag = librosa.amplitude_to_db(spectrogram_2)
@@ -88,30 +89,31 @@ def cost_calculator(word_matrix, t_dataset_matrix):
             # make a list with minimum cost of each digit
             cost_matrix_new[i][j] = cost_matrix[-1, -1]'''
 
-            window_size = 128  # Adjust the window size as needed #128 64
-            hop_length = 64
+            window_size = 512  # Adjust the window size as needed #128 64
+            hop_length = 256
             spectrogram_1_windows = librosa.util.frame(spec1_mag, frame_length=window_size, hop_length=hop_length)
             spectrogram_2_windows = librosa.util.frame(spec2_mag, frame_length=window_size, hop_length=hop_length)
             cosine_similarities = []
-            for k in range(spectrogram_1_windows.shape[1]):
-                vector_1 = spectrogram_1_windows[:, k].flatten()
-                vector_2 = spectrogram_2_windows[:, k].flatten()
-                if len(vector_2) > len(vector_1):
+            for k in range(spectrogram_1_windows.shape[0]):
+                vector_1 = spectrogram_1_windows[k, :].flatten()
+                vector_2 = spectrogram_2_windows[k, :].flatten()
+                '''if len(vector_2) > len(vector_1):
                     print("here1")
                     size_diff = vector_2.size - vector_1.size
                     vector_1 = np.concatenate((vector_1, np.zeros(size_diff)))
                 elif len(vector_2) < len(vector_1):
                     print("here2")
                     size_diff = vector_1.size - vector_2.size
-                    vector_2 = np.concatenate((vector_2, np.zeros(size_diff)))
+                    vector_2 = np.concatenate((vector_2, np.zeros(size_diff)))'''
                 cos_similarity = np.dot(vector_1, vector_2) / (np.linalg.norm(vector_1) * np.linalg.norm(vector_2))
+                #print("cos similarity ",cos_similarity,"between:",i,"word","of",j,"training dataset,with window",k,"of each spec")
                 cosine_similarities.append(cos_similarity)
 
                 # Aggregate the cosine similarities
             average_cos_similarity[i][j] = np.nanmean(cosine_similarities)
             # print("Average Cosine Similarity:", average_cos_similarity[i])
-            #median_value_train[i][j] = np.median(spec2_mag)
-            #std_deviation_train[i][j] = np.std(spec2_mag)
+            # median_value_train[i][j] = np.median(spec2_mag)
+            # std_deviation_train[i][j] = np.std(spec2_mag)
         '''
         for j in range(len(t_dataset_matrix)):
             normal_distance[i][j] = np.abs(
@@ -162,17 +164,20 @@ def cost_calculator(word_matrix, t_dataset_matrix):
         median_per_training_word[k] = np.mean(median_value_train[start_idx:end_idx])
         std_deviation_per_training_word[k] = np.std(std_deviation_train[start_idx:end_idx])'''
 
-
     # print("digits recognised: ")
-    #print(min_cost_indexes)
+    # print(min_cost_indexes)
     print(max_cos_indexes)
     return spec1_mags, spec2_mags
 
 
-def classify_with_mlp(word_matrix, t_dataset_matrix, spec1_mag, spec2_mag):
+def classify_with_mlp(word_matrix, t_dataset_matrix, spec1_mags, spec2_mags):
+    # Convert spec1_mags and spec2_mags to numpy arrays
+    spec1_mags = np.array(spec1_mags)
+    spec2_mags = np.array(spec2_mags)
+
     # Create a multi-layer perceptron (MLP) model
     model = tf.keras.Sequential([
-        tf.keras.layers.Dense(64, activation='relu', input_shape=(spec1_mag[0].shape[1],)),
+        tf.keras.layers.Dense(64, activation='relu', input_shape=spec1_mags[0].shape),
         tf.keras.layers.Dense(32, activation='relu'),
         tf.keras.layers.Dense(10, activation='softmax')
     ])
@@ -180,12 +185,19 @@ def classify_with_mlp(word_matrix, t_dataset_matrix, spec1_mag, spec2_mag):
     # Compile the model
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    # Classify the word_matrix using the MLP model
-    predictions = model.predict(spec1_mag)
-    predicted_classes = np.argmax(predictions, axis=1)
+    # Reshape spec1_mags to match the input shape of the MLP model
+    spec1_mags_reshaped = spec1_mags.reshape(spec1_mags.shape[0], -1)
 
+    # Train the MLP model using spec1_mags_reshaped as the input and spec2_mags as the target labels
+    model.fit(spec1_mags_reshaped, spec2_mags, epochs=10, batch_size=32)
+
+    # Classify spec1_mags using the trained MLP model
+    predictions = model.predict(spec1_mags_reshaped)
+    predicted_classes = np.argmax(predictions, axis=1)
     return predicted_classes
-#gamv thn aek
+
+
+# gamv thn aek
 '''spectrogram_2 = np.abs(librosa.stft(word_matrix2[0], win_length=512, hop_length=256))  
 # we increaced the window length of the sort fourier transform because it works better?!
 
