@@ -188,13 +188,15 @@ def classify_with_mlp( spec1_mags, spec2_mags, num_samples, total_max_shape):
     # Compile the model
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    # Reshape spec2_mags to match the input shape of the MLP model, basically flatten the array
-    spec2_mags_reshaped = spec2_mags.reshape(70, total_max_shape)
-    indices = random.sample(range(len(spec2_mags_reshaped)), 10)
-    spec2_mags_train = spec2_mags[indices]
+    # Randomly select samples from spec2_mags
+    selected_indices = random.choices(range(len(spec2_mags)), k=num_samples)
+    spec2_mags_train = spec2_mags[selected_indices]
+
+    # Create target labels corresponding to the selected samples
     target_labels = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-    # Train the MLP model using spec2_mags_reshaped as the input and word_matrix as the target labels
-    model.fit(spec2_mags_train, target_labels, epochs=1000, batch_size=32)
+
+    # Train the MLP model using spec2_mags_train as the input and target_labels as the target labels
+    model.fit(spec2_mags_train, target_labels, epochs=1000, batch_size=10)
 
     # Reshape spec1_mags to match the input shape of the MLP model
     spec1_mags_reshaped = spec1_mags.reshape(spec1_mags.shape[0], -1)
@@ -202,6 +204,10 @@ def classify_with_mlp( spec1_mags, spec2_mags, num_samples, total_max_shape):
     # Classify spec1_mags using the trained MLP model
     predictions = model.predict(spec1_mags_reshaped)
     predicted_classes = np.argmax(predictions, axis=1)
+
+    # Display the selected indices
+    print("Selected indices from spec2:")
+    print(selected_indices)
 
     return predicted_classes
 
