@@ -1,7 +1,13 @@
 import random
+from idlelib import history
 
 import numpy as np
 import librosa.display
+from librosa.display import plt
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import train_test_split
+
 import filtering_and_segmentation
 import os
 import tensorflow as tf
@@ -30,18 +36,18 @@ def training():
 
 def cost_calculator(word_matrix, t_dataset_matrix):
     # cost_matrix_new = np.empty((len(word_matrix), len(t_dataset_matrix)))
-    ct = np.empty((len(word_matrix), int(len(t_dataset_matrix) / 7)))
+    #ct = np.empty((len(word_matrix), int(len(t_dataset_matrix) / 7)))
     # ct2 = np.empty((len(word_matrix), int(len(t_dataset_matrix) / 7)))
     # cost_matrix_new = [None] * len(word_matrix) * len(t_dataset_matrix)
     # min_cost_indexes = []
-    max_cos_indexes = []
+    #max_cos_indexes = []
     # normal_distance = np.empty((len(word_matrix), len(t_dataset_matrix)))
     # median_value_train = np.empty(len(t_dataset_matrix))
     # std_deviation_train = np.empty(len(t_dataset_matrix))
     # median_per_training_word = np.empty(int(len(t_dataset_matrix) / 7))
     # std_deviation_per_training_word = np.empty(int(len(t_dataset_matrix) / 7))
 
-    average_cos_similarity = np.empty((len(word_matrix), len(t_dataset_matrix)))
+    #average_cos_similarity = np.empty((len(word_matrix), len(t_dataset_matrix)))
     # training_digits_coefficients = []
     # max_len = max([len(i) for i in word_matrix])
     # max_len2 = max([len(i) for i in t_dataset_matrix])
@@ -87,12 +93,13 @@ def cost_calculator(word_matrix, t_dataset_matrix):
                 spec2_mag = np.concatenate((spec2_mag, np.zeros((spec2_mag.shape[0], size_diff2))), axis=1)
             if i == 1:
                 spec2_mags.append(spec2_mag[i])
-            # the best match for the word has the least cost (which is in the bottom right corner), we checked for the other wav files
+            # the best match for the word has the least cost (which is in the bottom right corner), we checked for
+            # the other wav files
             '''cost_matrix, wp = librosa.sequence.dtw(X=spec1_mag, Y=spec2_mag)
             # make a list with minimum cost of each digit
-            cost_matrix_new[i][j] = cost_matrix[-1, -1]'''
+            cost_matrix_new[i][j] = cost_matrix[-1, -1]
 
-            '''window_size = 512  # Adjust the window size as needed #128 64
+            window_size = 512  # Adjust the window size as needed #128 64
             hop_length = 256
             spectrogram_1_windows = librosa.util.frame(spec1_mag, frame_length=window_size, hop_length=hop_length)
             spectrogram_2_windows = librosa.util.frame(spec2_mag, frame_length=window_size, hop_length=hop_length)
@@ -170,15 +177,60 @@ def cost_calculator(word_matrix, t_dataset_matrix):
     # print("digits recognised: ")
     # print(min_cost_indexes)
     print(max_cos_indexes)'''
-    return spec1_mags, spec2_mags, total_max_shape
+    num_train_data = int(len(t_dataset_matrix) / 10)
+    return spec1_mags, spec2_mags, total_max_shape, num_train_data
 
 
-def classify_with_mlp( spec1_mags, spec2_mags, num_samples, total_max_shape):
-    # Convert spec1_mags and spec2_mags to numpy arrays
+'''def cost_calculator(word_matrix, t_dataset_matrix):
+    # ...
+    spec1_mags = []
+    spec2_mags = []
+    spec1_mag_max_shape_list = []
+    spec2_mag_max_shape_list = []
+    for i in range(len(word_matrix)):
+        spectrogram_1 = np.abs(librosa.stft(word_matrix[i], win_length=2048, hop_length=1024))
+        spec1_mag = spectrogram_1
+        spec1_mag_max_shape_list.append(spec1_mag.shape[1])
+    for j in range(len(t_dataset_matrix)):
+        spectrogram_2 = np.abs(librosa.stft(t_dataset_matrix[j], win_length=2048, hop_length=1024))
+        spec2_mag = spectrogram_2
+        spec2_mag_max_shape_list.append(spec2_mag.shape[1])
+    temp1 = max(spec1_mag_max_shape_list)
+    temp2 = max(spec2_mag_max_shape_list)
+    total_max_shape = max(temp1, temp2)
+
+    for i in range(len(word_matrix)):
+        spectrogram_1 = np.abs(librosa.stft(word_matrix[i], win_length=2048, hop_length=1024))
+        spec1_mag = spectrogram_1
+        if spec1_mag.shape[1] < total_max_shape:
+            size_diff = total_max_shape - spec1_mag.shape[1]
+            spec1_mag = np.concatenate((spec1_mag, np.zeros((spec1_mag.shape[0], size_diff))), axis=1)
+        spec1_mags.append(spec1_mag[i])
+
+        for j in range(len(t_dataset_matrix)):
+            spectrogram_2 = np.abs(librosa.stft(t_dataset_matrix[j], win_length=2048, hop_length=1024))
+            spec2_mag = spectrogram_2
+            if spec2_mag.shape[1] < total_max_shape:
+                size_diff2 = total_max_shape - spec2_mag.shape[1]
+                spec2_mag = np.concatenate((spec2_mag, np.zeros((spec2_mag.shape[0], size_diff2))), axis=1)
+            if i == 1:
+                spec2_mags.append(spec2_mag[i])
+
+    return spec1_mags, spec2_mags, total_max_shape'''
+
+
+def classify_with_mlp(spec1_mags, spec2_mags, total_max_shape, n):
     spec1_mags = np.array(spec1_mags)
     spec2_mags = np.array(spec2_mags)
+    spec1_labels = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    spec2_labels = np.array(
+        [0] * n + [1] * n + [2] * n + [3] * n + [4] * n + [5] * n + [6] * n + [7] * n + [8] * n + [9] * n)
 
-    # Create a multi-layer perceptron (MLP) model
+    # Split the data into training and validation sets
+    train_spec2_mags, val_spec2_mags, train_spec2_labels, val_spec2_labels = train_test_split(
+        spec2_mags, spec2_labels, test_size=0.2, random_state=42)
+
+    # Create a multi-layer perceptron (MLP) model 64 32 10
     model = tf.keras.Sequential([
         tf.keras.layers.Dense(64, activation='relu', input_shape=(total_max_shape,)),
         tf.keras.layers.Dense(32, activation='relu'),
@@ -188,15 +240,9 @@ def classify_with_mlp( spec1_mags, spec2_mags, num_samples, total_max_shape):
     # Compile the model
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    # Randomly select samples from spec2_mags
-    selected_indices = random.choices(range(len(spec2_mags)), k=num_samples)
-    spec2_mags_train = spec2_mags[selected_indices]
-
-    # Create target labels corresponding to the selected samples
-    target_labels = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-
-    # Train the MLP model using spec2_mags_train as the input and target_labels as the target labels
-    model.fit(spec2_mags_train, target_labels, epochs=1000, batch_size=10)
+    # Train the MLP model using train_spec2_mags as the input and train_spec2_labels as the target labels
+    history = model.fit(train_spec2_mags, train_spec2_labels, epochs=50, batch_size=10,
+                        validation_data=(val_spec2_mags, val_spec2_labels))
 
     # Reshape spec1_mags to match the input shape of the MLP model
     spec1_mags_reshaped = spec1_mags.reshape(spec1_mags.shape[0], -1)
@@ -205,9 +251,32 @@ def classify_with_mlp( spec1_mags, spec2_mags, num_samples, total_max_shape):
     predictions = model.predict(spec1_mags_reshaped)
     predicted_classes = np.argmax(predictions, axis=1)
 
-    # Display the selected indices
-    print("Selected indices from spec2:")
-    print(selected_indices)
+    # Plot training and validation loss
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('Model Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend(['Train', 'Validation'])
+    plt.show()
+
+    # Plot training and validation accuracy
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('Model Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend(['Train', 'Validation'])
+    plt.show()
+
+    ''''# Create a confusion matrix
+    cm = confusion_matrix(val_spec2_labels, np.argmax(model.predict(val_spec2_mags), axis=1))
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+    plt.title('Confusion Matrix')
+    plt.xlabel('Predicted Labels')
+    plt.ylabel('True Labels')
+    plt.show()'''
 
     return predicted_classes
 

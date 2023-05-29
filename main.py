@@ -22,8 +22,8 @@ print("The fundamental frequency of the speaker is calculated at: " + str(averag
 # 3
 
 t_dataset_matrix = training_datasets.training()
-spec1,spec2,total_max_shape = training_datasets.cost_calculator(word_matrix,t_dataset_matrix)
-predicted_classes = training_datasets.classify_with_mlp(spec1,spec2,len(word_matrix),total_max_shape)
+spec1,spec2,total_max_shape,num_train_data = training_datasets.cost_calculator(word_matrix,t_dataset_matrix)
+predicted_classes = training_datasets.classify_with_mlp(spec1,spec2,total_max_shape,num_train_data)
 print(predicted_classes)
 '''
 #this is our way,sort of. because we changed to check the dp amplitude
