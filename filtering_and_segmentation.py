@@ -50,9 +50,9 @@ def filtering(signal, sr):
     s_foreground = mask_v * spectrogram_full
     s_background = mask_i * spectrogram_full
 
-    #plotting.plot_foreground_background_comparison(spectrogram_full, s_background, s_foreground, idx, sr,phase)
+    #plotting.plot_foreground_background_comparison(spectrogram_full, s_background, s_foreground,idx, sr,phase)
 
-    temp = librosa.istft(s_foreground * phase)
+    temp = librosa.istft(s_foreground*phase)
     foreground_audio = librosa.effects.deemphasis(temp)
     return foreground_audio
 
