@@ -34,7 +34,7 @@ def filtering(signal, sr):
     spectrogram_filter = np.minimum(spectrogram_full, spectrogram_filter)
 
     margin_i, margin_v = 2, 10
-    power = 2.1
+    power = 2
 
     mask_i = librosa.util.softmask(spectrogram_filter,
                                    margin_i * (spectrogram_full - spectrogram_filter),

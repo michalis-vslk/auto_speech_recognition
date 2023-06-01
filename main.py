@@ -24,7 +24,7 @@ t_dataset_matrix = training_datasets.training()
 '''for i in range(len(word_matrix)):
     sd.play(word_matrix[i], sr)
     sd.wait()
-
+print(len(word_matrix),len(t_dataset_matrix))
 for i in range(len(t_dataset_matrix)):
     sd.play(t_dataset_matrix[i], sr)
     sd.wait()'''
