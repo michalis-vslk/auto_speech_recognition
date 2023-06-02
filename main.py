@@ -9,7 +9,7 @@ import filtering_and_segmentation
 import training_datasets
 
 # Loading the audio file
-signal, sr = librosa.load("sample-1.wav")  # we change sr
+signal, sr = librosa.load("sample-3.wav")  # we change sr
 
 # 1) Filtering the original signal, isolating each word and calculating the speaker's fundamental frequency
 # Filtering with the use of a foreground vs background classifier
@@ -28,8 +28,9 @@ print(len(word_matrix),len(t_dataset_matrix))
 for i in range(len(t_dataset_matrix)):
     sd.play(t_dataset_matrix[i], sr)
     sd.wait()'''
-spec1,spec2,total_max_shape,num_train_data = training_datasets.cost_calculator(word_matrix,t_dataset_matrix)
-predicted_classes = training_datasets.classify_with_mlp(spec1,spec2,total_max_shape,num_train_data)
+spec1,spec2,total_max_shape,num_train_data,total_max_shape2 = training_datasets.cost_calculator(word_matrix,t_dataset_matrix)
+
+predicted_classes = training_datasets.classify_with_mlp(spec1,spec2,total_max_shape,num_train_data,total_max_shape2)
 print(predicted_classes)
 '''
 #this is our way,sort of. because we changed to check the dp amplitude

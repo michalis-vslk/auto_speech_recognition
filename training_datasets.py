@@ -12,14 +12,19 @@ import filtering_and_segmentation
 import os
 import tensorflow as tf
 import matplotlib.pyplot as plt
+
+from sklearn.metrics.pairwise import cosine_similarity
 import librosa
 import librosa.display
+from keras.callbacks import EarlyStopping
+from sklearn.metrics.pairwise import euclidean_distances
 
 
 def training():
     t_datasets = []
     # assigning the proper directory
     directory = 'training dataset'
+    # directory = 't2'
 
     # iterating over files in that directory
     for filename in os.scandir(directory):
@@ -39,18 +44,19 @@ def training():
 
 def cost_calculator(word_matrix, t_dataset_matrix):
     # cost_matrix_new = np.empty((len(word_matrix), len(t_dataset_matrix)))
-    #ct = np.empty((len(word_matrix), int(len(t_dataset_matrix) / 7)))
+    num_train_data = int(len(t_dataset_matrix) / 10)
+    # ct = np.empty((len(word_matrix), int(len(t_dataset_matrix) / num_train_data)))
     # ct2 = np.empty((len(word_matrix), int(len(t_dataset_matrix) / 7)))
     # cost_matrix_new = [None] * len(word_matrix) * len(t_dataset_matrix)
     # min_cost_indexes = []
-    #max_cos_indexes = []
+    # max_cos_indexes = []
     # normal_distance = np.empty((len(word_matrix), len(t_dataset_matrix)))
     # median_value_train = np.empty(len(t_dataset_matrix))
     # std_deviation_train = np.empty(len(t_dataset_matrix))
     # median_per_training_word = np.empty(int(len(t_dataset_matrix) / 7))
     # std_deviation_per_training_word = np.empty(int(len(t_dataset_matrix) / 7))
 
-    #average_cos_similarity = np.empty((len(word_matrix), len(t_dataset_matrix)))
+    # average_cos_similarity = np.empty((len(word_matrix), len(t_dataset_matrix)))
     # training_digits_coefficients = []
     # max_len = max([len(i) for i in word_matrix])
     # max_len2 = max([len(i) for i in t_dataset_matrix])
@@ -60,8 +66,8 @@ def cost_calculator(word_matrix, t_dataset_matrix):
     spec1_mag_max_shape_list = []
     spec2_mag_max_shape_list = []
     for i in range(len(word_matrix)):
-        spectrogram_1 = np.abs(librosa.stft(word_matrix[i])) # 128 64
-        spec1_mag = librosa.amplitude_to_db(spectrogram_1, ref=np.max)#normilize input spectrogram
+        spectrogram_1 = np.abs(librosa.stft(word_matrix[i]))  # 128 64
+        spec1_mag = librosa.amplitude_to_db(spectrogram_1, ref=np.max)  # normilize input spectrogram
         spec1_mag_max_shape_list.append(spec1_mag.shape[1])
         '''plt.figure(figsize=(8, 4))
 
@@ -86,6 +92,7 @@ def cost_calculator(word_matrix, t_dataset_matrix):
     temp1 = max(spec1_mag_max_shape_list)
     temp2 = max(spec2_mag_max_shape_list)
     total_max_shape = max(temp1, temp2)
+    total_max_shape2 = 1025
     for i in range(len(word_matrix)):
         # size_diff1 = total_max_length - word_matrix[i].size
         # word_matrix[i] = np.concatenate((word_matrix[i], np.zeros(size_diff1)))
@@ -102,7 +109,7 @@ def cost_calculator(word_matrix, t_dataset_matrix):
 
             plt.tight_layout()
             plt.show()'''
-        spec1_mags.append(spec1_mag[i])
+        spec1_mags.append(spec1_mag)
         # median_value_1 = np.median(spec1_mag)
         # std_deviation_1 = np.std(spec1_mag)
     for j in range(len(t_dataset_matrix)):
@@ -116,7 +123,7 @@ def cost_calculator(word_matrix, t_dataset_matrix):
         if spec2_mag.shape[1] < total_max_shape:
             size_diff2 = total_max_shape - spec2_mag.shape[1]
             spec2_mag = np.concatenate((spec2_mag, np.zeros((spec2_mag.shape[0], size_diff2))), axis=1)
-        spec2_mags.append(spec2_mag[j])
+        spec2_mags.append(spec2_mag)
         '''plt.figure(figsize=(8, 4))
 
         librosa.display.specshow(spec2_mag, y_axis='log')
@@ -125,16 +132,16 @@ def cost_calculator(word_matrix, t_dataset_matrix):
 
         plt.tight_layout()
         plt.show()'''
-        '''if i == 1:
-            spec2_mags.append(spec2_mag[i])'''
+        ''' if i == 1:
+            spec2_mags.append(spec2_mag[j])'''
         '''# the best match for the word has the least cost (which is in the bottom right corner), we checked for
         # the other wav files
         cost_matrix, wp = librosa.sequence.dtw(X=spec1_mag, Y=spec2_mag)
         # make a list with minimum cost of each digit
-        cost_matrix_new[i][j] = cost_matrix[-1, -1]
-    
-        window_size = 512  # Adjust the window size as needed #128 64
-        hop_length = 256
+        cost_matrix_new[i][j] = cost_matrix[-1, -1]'''
+
+        '''window_size = 128  # Adjust the window size as needed #128 64
+        hop_length = 64
         spectrogram_1_windows = librosa.util.frame(spec1_mag, frame_length=window_size, hop_length=hop_length)
         spectrogram_2_windows = librosa.util.frame(spec2_mag, frame_length=window_size, hop_length=hop_length)
         cosine_similarities = []
@@ -152,13 +159,12 @@ def cost_calculator(word_matrix, t_dataset_matrix):
             cos_similarity = np.dot(vector_1, vector_2) / (np.linalg.norm(vector_1) * np.linalg.norm(vector_2))
             # print("cos similarity ",cos_similarity,"between:",i,"word","of",j,"training dataset,with window",k,"of each spec")
             cosine_similarities.append(cos_similarity)
-    
+
             # Aggregate the cosine similarities
         average_cos_similarity[i][j] = np.nanmean(cosine_similarities)
         # print("Average Cosine Similarity:", average_cos_similarity[i])
         # median_value_train[i][j] = np.median(spec2_mag)
         # std_deviation_train[i][j] = np.std(spec2_mag)
-    
     for j in range(len(t_dataset_matrix)):
         normal_distance[i][j] = np.abs(
             (median_value_1 - median_value_train[i][j]) / (std_deviation_1 - std_deviation_train[i][j]))
@@ -191,28 +197,27 @@ def cost_calculator(word_matrix, t_dataset_matrix):
     index_min_cost = np.argmin(ct[i])
     min_cost_indexes.append(index_min_cost)
     # 4th way cosine cost
-    for k in range(int(len(t_dataset_matrix) / 7)):
-        start_idx = k * 7
-        end_idx = (k + 1) * 7
+    for k in range(int(len(t_dataset_matrix) / num_train_data)):
+        start_idx = k * num_train_data
+        end_idx = (k + 1) * num_train_data
         ct[i][k] = max(average_cos_similarity[i][start_idx:end_idx])
     index_max_cost = np.argmax(ct[i])
     max_cos_indexes.append(index_max_cost)
     # index_min_cost = np.argmax(average_cos_similarity[i])
     # min_cost_indexes.append(index_min_cost)
-    
+
     # 5th way
-    
+
     for k in range(int(len(t_dataset_matrix) / 7)):
-    start_idx = k * 7
-    end_idx = (k + 1) * 7
-    median_per_training_word[k] = np.mean(median_value_train[start_idx:end_idx])
-    std_deviation_per_training_word[k] = np.std(std_deviation_train[start_idx:end_idx])
-    
+        start_idx = k * 7
+        end_idx = (k + 1) * 7
+        median_per_training_word[k] = np.mean(median_value_train[start_idx:end_idx])
+        std_deviation_per_training_word[k] = np.std(std_deviation_train[start_idx:end_idx])
+
     # print("digits recognised: ")
     # print(min_cost_indexes)
-    print(max_cos_indexes)'''
-    num_train_data = int(len(t_dataset_matrix) / 10)
-    return spec1_mags, spec2_mags, total_max_shape, num_train_data
+print(max_cos_indexes)'''
+    return spec1_mags, spec2_mags, total_max_shape, num_train_data,total_max_shape2
 
 
 '''def cost_calculator(word_matrix, t_dataset_matrix):
@@ -285,77 +290,129 @@ def cost_calculator(word_matrix, t_dataset_matrix):
     num_train_data = int(len(t_dataset_matrix) / 10)
     return spec1_mags, spec2_mags, total_max_shape, num_train_data'''
 
-
-def classify_with_mlp(spec1_mags, spec2_mags, total_max_shape, n):
+def classify_with_mlp(spec1_mags, spec2_mags, total_max_shape, n,total_max_shape2):
     spec1_mags = np.array(spec1_mags)
     spec2_mags = np.array(spec2_mags)
-    spec1_labels = np.array([3, 5, 7, 9, 0, 2, 4, 6, 8, 1])
-    #spec1_labels = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+    #spec1_labels = np.array([3, 5, 7, 9, 0, 2, 4, 6, 8, 1])
+    spec1_labels = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     spec2_labels = np.array(
         [0] * n + [1] * n + [2] * n + [3] * n + [4] * n + [5] * n + [6] * n + [7] * n + [8] * n + [9] * n)
 
+    # Flatten the spectrograms
+    spec1_mags_flat = spec1_mags.reshape(spec1_mags.shape[0], -1)
+    spec2_mags_flat = spec2_mags.reshape(spec2_mags.shape[0], -1)
+    print(spec1_mags_flat.shape,spec2_mags_flat.shape,len(spec1_mags_flat),len(spec2_mags_flat))
     # Split the data into training and validation sets
     train_spec2_mags, val_spec2_mags, train_spec2_labels, val_spec2_labels = train_test_split(
-        spec2_mags, spec2_labels, test_size=0.3)  #, random_state=42
+        spec2_mags_flat, spec2_labels, test_size=0.3)
 
-    # Create a multi-layer perceptron (MLP) model 64 32 10
+    # Create a multi-layer perceptron (MLP) model
     model = tf.keras.Sequential([
-        tf.keras.layers.Dense(256, activation='relu', input_shape=(total_max_shape,)),
+        tf.keras.layers.Dense(256, activation='relu', input_shape=(total_max_shape * total_max_shape2,)),
+        tf.keras.layers.Dense(512, activation='relu'),
+        tf.keras.layers.Dense(1024, activation='relu'),
+        tf.keras.layers.Dense(2048, activation='relu'),
+        tf.keras.layers.Dense(4096, activation='relu'),
+        tf.keras.layers.Dense(8192, activation='relu'),
+        tf.keras.layers.Dense(4096, activation='relu'),
+        tf.keras.layers.Dense(2048, activation='relu'),
+        tf.keras.layers.Dense(1024, activation='relu'),
+        tf.keras.layers.Dense(512, activation='relu'),
+        tf.keras.layers.Dense(256, activation='relu'),
         tf.keras.layers.Dense(128, activation='relu'),
         tf.keras.layers.Dense(64, activation='relu'),
-        #tf.keras.layers.Dense(64, activation='tanh'),
-        #tf.keras.layers.Dense(64, activation=tf.keras.layers.LeakyReLU(alpha=0.2)),
+        tf.keras.layers.Dense(32, activation='relu'),
+        tf.keras.layers.Dense(16, activation='relu'),
+        # tf.keras.layers.Dense(64, activation='tanh'),
+        # tf.keras.layers.Dense(64, activation=tf.keras.layers.LeakyReLU(alpha=0.2)),
         tf.keras.layers.Dense(10, activation='softmax')
     ])
-
+    #best config yet
+    '''tf.keras.layers.Dense(256, activation='relu', input_shape=(total_max_shape,)),
+        tf.keras.layers.Dense(512, activation='relu'),
+        tf.keras.layers.Dense(1024, activation='relu'),
+        tf.keras.layers.Dense(2048, activation='relu'),
+        tf.keras.layers.Dense(4096, activation='relu'),
+        tf.keras.layers.Dense(8192, activation='relu'),
+        tf.keras.layers.Dense(4096, activation='relu'),
+        tf.keras.layers.Dense(2048, activation='relu'),
+        tf.keras.layers.Dense(1024, activation='relu'),
+        tf.keras.layers.Dense(512, activation='relu'),
+        tf.keras.layers.Dense(256, activation='relu'),
+        tf.keras.layers.Dense(128, activation='relu'),
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(32, activation='relu'),
+        tf.keras.layers.Dense(16, activation='relu'),'''
+        
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
     model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    # Train the MLP model using train_spec2_mags as the input and train_spec2_labels as the target labels
-    history = model.fit(train_spec2_mags, train_spec2_labels, epochs=150, batch_size=98,
-                        validation_data=(val_spec2_mags, val_spec2_labels))
+    predicted_classes_history = []
+    max_accuracy = []
+    # Define a custom callback to store predicted classes at the end of each epoch
+    class PredictionCallback(tf.keras.callbacks.Callback):
+        def on_epoch_end(self, epoch, logs=None):
+            spec1_mags_reshaped = spec1_mags.reshape(spec1_mags.shape[0], -1)
+            predictions = model.predict(spec1_mags_reshaped)
+            predicted_classes = np.argmax(predictions, axis=1)
+            predicted_classes_history.append(predicted_classes)
+
+            # Calculate accuracy
+            correct_predictions = np.equal(predicted_classes, spec1_labels)
+            my_accuracy = np.mean(correct_predictions)
+            max_accuracy.append(my_accuracy)
+            # Print accuracy
+            print("Epoch", epoch + 1, "Accuracy:", my_accuracy,"classes:",predicted_classes)
+
+            if my_accuracy == 1:
+                self.model.stop_training = True
+                print("Successfully identified the classes:", predicted_classes)
+
+    # Train the MLP model
+    history = model.fit(train_spec2_mags, train_spec2_labels, epochs=120, batch_size=119,
+                        validation_data=(val_spec2_mags, val_spec2_labels),
+                        callbacks=[PredictionCallback()])
 
     # Reshape spec1_mags to match the input shape of the MLP model
     spec1_mags_reshaped = spec1_mags.reshape(spec1_mags.shape[0], -1)
-
     # Classify spec1_mags using the trained MLP model
     predictions = model.predict(spec1_mags_reshaped)
     predicted_classes = np.argmax(predictions, axis=1)
 
     # Plot training and validation loss
-    plt2.plot(history.history['loss'])
-    plt2.plot(history.history['val_loss'])
-    plt2.title('Model Loss')
-    plt2.xlabel('Epoch')
-    plt2.ylabel('Loss')
-    plt2.legend(['Train', 'Validation'])
-    plt2.show()
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('Model Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend(['Train', 'Validation'])
+    plt.show()
 
     # Plot training and validation accuracy
-    plt2.plot(history.history['accuracy'])
-    plt2.plot(history.history['val_accuracy'])
-    plt2.title('Model Accuracy')
-    plt2.xlabel('Epoch')
-    plt2.ylabel('Accuracy')
-    plt2.legend(['Train', 'Validation'])
-    plt2.show()
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('Model Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend(['Train', 'Validation'])
+    plt.show()
 
     # Create a confusion matrix
     cm = confusion_matrix(val_spec2_labels, np.argmax(model.predict(val_spec2_mags), axis=1))
-    #cm = confusion_matrix(spec1_labels, predicted_classes)
     plt.figure(figsize=(10, 8))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
     plt.title('Confusion Matrix')
     plt.xlabel('Predicted Labels')
     plt.ylabel('True Labels')
     plt.show()
-    correct_predictions = np.equal(predicted_classes, spec1_labels)
 
     # Calculate accuracy
-    accuracy = np.mean(correct_predictions)
+    correct_predictions = np.equal(predicted_classes, spec1_labels)
+    my_accuracy = np.mean(correct_predictions)
 
     # Print accuracy
-    print("Accuracy:", accuracy)
+    print("Accuracy:", my_accuracy)
 
     # Visualize the predicted classes and actual labels
     plt.scatter(range(len(spec1_labels)), spec1_labels, label='Actual Labels')
@@ -365,8 +422,8 @@ def classify_with_mlp(spec1_mags, spec2_mags, total_max_shape, n):
     plt.title('Comparison of Actual Labels and Predicted Classes')
     plt.legend()
     plt.show()
+    print(max(max_accuracy))
     return predicted_classes
-
 
 '''spectrogram_2 = np.abs(librosa.stft(word_matrix2[0], win_length=512, hop_length=256))  
 # we increaced the window length of the sort fourier transform because it works better?!
@@ -376,3 +433,86 @@ def classify_with_mlp(spec1_mags, spec2_mags, total_max_shape, n):
 
 # we save the magnitudes of each spectogram's coefficients,without the phase(hence the abs)
 spec2_mag=librosa.amplitude_to_db(spectrogram_2)'''
+
+
+'''def classify_with_mlp(spec1_mags, spec2_mags, total_max_shape, n):
+    spec1_mags = np.array(spec1_mags)
+    spec2_mags = np.array(spec2_mags)
+    print(spec1_mags.shape, spec2_mags.shape)
+    spec1_labels = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    spec2_labels = np.array(
+        [0] * n + [1] * n + [2] * n + [3] * n + [4] * n + [5] * n + [6] * n + [7] * n + [8] * n + [9] * n)
+
+    # Split the data into training and validation sets
+    train_spec2_mags, val_spec2_mags, train_spec2_labels, val_spec2_labels = train_test_split(
+        spec2_mags, spec2_labels, test_size=0.3)
+
+    # Create a multi-layer perceptron (MLP) model
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(256, activation='relu', input_shape=(total_max_shape,)),
+        tf.keras.layers.Dense(512, activation='relu'),
+        tf.keras.layers.Dense(1024, activation='relu'),
+        tf.keras.layers.Dense(2048, activation='relu'),
+        tf.keras.layers.Dense(4096, activation='relu'),
+        tf.keras.layers.Dense(8192, activation='relu'),
+        tf.keras.layers.Dense(4096, activation='relu'),
+        tf.keras.layers.Dense(2048, activation='relu'),
+        tf.keras.layers.Dense(1024, activation='relu'),
+        tf.keras.layers.Dense(512, activation='relu'),
+        tf.keras.layers.Dense(256, activation='relu'),
+        tf.keras.layers.Dense(128, activation='relu'),
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(32, activation='relu'),
+        tf.keras.layers.Dense(16, activation='relu'),
+        tf.keras.layers.Dense(10, activation='softmax')
+    ])
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+    model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    # Train the MLP model
+    history = model.fit(train_spec2_mags, train_spec2_labels, epochs=120, batch_size=119,
+                        validation_data=(val_spec2_mags, val_spec2_labels))
+
+    # Calculate cosine similarity between spec1_mags and spec2_mags
+    spec1_mags_reshaped = spec1_mags.reshape(spec1_mags.shape[0], -1)
+    similarities = cosine_similarity(spec1_mags_reshaped, spec2_mags)
+
+    # Find the most similar spectrogram for each spec1_mags sample
+    most_similar_indices = np.argmax(similarities, axis=1)
+    predicted_classes = spec2_labels[most_similar_indices]
+
+    # Calculate accuracy
+    correct_predictions = np.equal(predicted_classes, spec1_labels)
+    my_accuracy = np.mean(correct_predictions)
+
+    # Print accuracy
+    print("Accuracy:", my_accuracy)
+
+    # Visualize the predicted classes and actual labels
+    plt.scatter(range(len(spec1_labels)), spec1_labels, label='Actual Labels')
+    plt.scatter(range(len(predicted_classes)), predicted_classes, label='Predicted Classes')
+    plt.xlabel('Sample Index')
+    plt.ylabel('Class')
+    plt.title('Comparison of Actual Labels and Predicted Classes')
+    plt.legend()
+    plt.show()
+
+    # Plot training and validation loss
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('Model Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend(['Train', 'Validation'])
+    plt.show()
+
+    # Plot training and validation accuracy
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('Model Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend(['Train', 'Validation'])
+    plt.show()
+
+    return predicted_classes'''
