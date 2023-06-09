@@ -21,8 +21,7 @@ def training():
             foreground_audio = filtering_and_segmentation.filtering(signal, sr)
             word_matrix = filtering_and_segmentation.segmentation(foreground_audio)
             t_datasets.append(word_matrix[0])
-
-    return t_dataset
+    return t_datasets
 
 
 def cost_calculator(word_matrix, t_dataset_matrix):
@@ -81,7 +80,6 @@ def classify_with_mlp(spec1_mags, spec2_mags, total_max_shape, n,total_max_shape
         [0] * n + [1] * n + [2] * n + [3] * n + [4] * n + [5] * n + [6] * n + [7] * n + [8] * n + [9] * n)
 
     # Flatten the spectrograms
-    spec1_mags_flat = spec1_mags.reshape(spec1_mags.shape[0], -1)
     spec2_mags_flat = spec2_mags.reshape(spec2_mags.shape[0], -1)
 
     # Split the data into training and validation sets
@@ -124,7 +122,7 @@ def classify_with_mlp(spec1_mags, spec2_mags, total_max_shape, n,total_max_shape
                 print("Successfully identified the classes:", predicted_classes)
 
     # Train the MLP model
-    history = model.fit(train_spec2_mags, train_spec2_labels, epochs=150, batch_size=119,
+    history = model.fit(train_spec2_mags, train_spec2_labels, epochs=150, batch_size=112,
                         validation_data=(val_spec2_mags, val_spec2_labels),
                         callbacks=[PredictionCallback()])
 
